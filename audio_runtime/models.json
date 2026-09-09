@@ -1,0 +1,12 @@
+[
+  {
+    "name": "beatnet-plus-af.pt",
+    "url": "https://raw.githubusercontent.com/mjhydri/BeatNet-Plus/bb90eb0a9065b101a4b4c4cb2b2061950266cb4b/src/BeatNetPlus/models/af_non_percussive_weights.pt",
+    "sha256": "15fe9c1ec8f2fca75dd3cecac72a3fbf57c9004e8726a786876ad5e269f4895f"
+  },
+  {
+    "name": "beat-this-final0.ckpt",
+    "url": "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/final0.ckpt",
+    "sha256": "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"
+  }
+]

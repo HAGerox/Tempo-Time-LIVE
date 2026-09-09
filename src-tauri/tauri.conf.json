@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Tempo Time LIVE",
+  "version": "0.1.0",
+  "identifier": "io.github.hagerox.tempotime.live",
+  "build": {
+    "beforeDevCommand": "npm run service && npm run notices && npm run dev:web",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run service && npm run notices && npm run build",
+    "frontendDist": "../web-dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Tempo Time LIVE",
+        "width": 720,
+        "height": 470,
+        "minWidth": 620,
+        "minHeight": 430
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; connect-src ipc: http://ipc.localhost; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app"
+    ],
+    "icon": [
+      "icons/icon.png",
+      "icons/icon.ico",
+      "icons/icon.icns"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "14.0",
+      "signingIdentity": "-",
+      "entitlements": "../assets/TempoTime.entitlements",
+      "infoPlist": "Info.plist"
+    },
+    "externalBin": [
+      "binaries/tempo-service"
+    ],
+    "resources": {
+      "../LICENSE": "LICENSE",
+      "../NOTICE.md": "NOTICE.md",
+      "../assets/licenses/": "licenses/",
+      "notices/THIRD_PARTY.txt": "THIRD_PARTY.txt",
+      "../.build/live-runtime/": "runtime/"
+    }
+  }
+}

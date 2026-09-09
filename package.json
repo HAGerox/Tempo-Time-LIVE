@@ -1,0 +1,37 @@
+{
+  "name": "tempo-time-live",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bash scripts/dev-live.sh",
+    "dev:web": "vite",
+    "build": "tsc && vite build",
+    "package": "bash scripts/package-app.sh",
+    "tauri": "tauri",
+    "service": "bash scripts/build-service.sh",
+    "test": "npm run service && swift test && python3 scripts/test-service.py .build/release/tempo-service",
+    "notices": "python3 scripts/generate-notices.py",
+    "test:pulse": "tsc src/beatPulseClock.ts --target ES2020 --module ES2020 --moduleResolution bundler --outDir .build/pulse-tests && node --test scripts/test-beat-pulse.mjs",
+    "runtimes:prepare": "bash scripts/prepare-runtime.sh",
+    "runtimes:build": "bash scripts/build-live-runtime.sh"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.8.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.5"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/HAGerox/Tempo-Time-LIVE.git"
+  }
+}
