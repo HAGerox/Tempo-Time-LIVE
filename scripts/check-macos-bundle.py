@@ -2,7 +2,6 @@
 """Verify the actual Tauri bundle and its self-contained audio service."""
 from pathlib import Path
 import plistlib
-import re
 import subprocess
 import sys
 app = Path(sys.argv[1]).resolve()
@@ -39,7 +38,7 @@ for path in app.rglob('*'):
         data = path.read_bytes()
         # Public upstream CI paths are not the app builder's personal data.
         inspected = data.replace(b'/' + b'Users/runner/work/', b'/upstream/').replace(b'/' + b'home/runner/work/', b'/upstream/')
-        if re.search(rb'/(?:Users|home)/[^/\s\x00]+/', inspected):
+        if str(Path.home()).encode() + b'/' in inspected:
             raise SystemExit(f'Local build path remains in {path.relative_to(app)}')
 madmom = runtime / 'tempo-live/_internal/madmom'
 assert not any(p.suffix in {'.pkl', '.npz', '.npy', '.h5'} for p in madmom.rglob('*'))

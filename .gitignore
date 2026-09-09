@@ -29,3 +29,6 @@ audit-private/
 .audit/
 .t3/
 src-tauri/notices/
+
+# Default PyInstaller work directory
+/build/
