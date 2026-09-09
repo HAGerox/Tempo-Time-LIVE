@@ -37,7 +37,7 @@ for path in app.rglob('*'):
     if path.is_file() and not path.is_symlink():
         data = path.read_bytes()
         # Public upstream CI paths are not the app builder's personal data.
-        inspected = data.replace(b'/' + b'Users/runner/work/', b'/upstream/').replace(b'/' + b'home/runner/work/', b'/upstream/')
+        inspected = data.replace(b'/' + b'Users/runner/', b'/upstream/').replace(b'/' + b'home/runner/', b'/upstream/')
         if str(Path.home()).encode() + b'/' in inspected:
             raise SystemExit(f'Local build path remains in {path.relative_to(app)}')
 madmom = runtime / 'tempo-live/_internal/madmom'

@@ -4,8 +4,9 @@ Follow the beat of live music and read note lengths in milliseconds.
 
 Choose an audio input and channel. Tempo Time LIVE estimates the tempo locally,
 pulses with the music and shows six note lengths, from whole to thirty-second.
-It starts tracking automatically; its background analysis becomes available after
-roughly nine seconds of music. Audio is not recorded or uploaded.
+On launch, it loads its bundled models before listening. Tracking starts
+automatically and refines its reading as it hears more music. Audio is not
+recorded or uploaded.
 
 You can still tap the circle or press Space for a manual tempo. After 30 seconds
 without a tap, the display returns to audio tracking automatically.
