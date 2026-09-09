@@ -39,3 +39,11 @@ This is a regression check, not a published accuracy benchmark.
 macOS 14 is the bundled libraries' deployment minimum; it has not been tested
 on a separate macOS 14 machine. Dante hardware and sleep/wake testing are not
 claimed by these checks.
+
+The packaged app was also exercised with real music through BlackHole loopback:
+selected-channel level and tempo appeared, keyboard tapping entered Manual,
+then the app returned to Audio and cleared the reading on silence. Screenshots
+in `assets/screenshots` document the actual desktop build. The separate bundled
+worker passed the same real-music check with a system-only PATH (first review
+9.33 seconds, median 95.90 BPM, maximum PCM reply 55.3 ms). App/helper/runtime
+signatures and the unsigned DMG checksum were verified locally.
