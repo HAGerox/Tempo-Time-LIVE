@@ -15,12 +15,16 @@ final class SongAnalyzer {
     private var frames = 0
     private var rate: Double
     private var cancelled: () -> Bool
-    private var clicks: SparseClickAnalyzer
+    private let classifier: AudioContentClassifying
+    private var permission: AudioContentPermission = []
+    private var musicValidFrom = 0.0
+    private var expectedTime: Double?
 
-    init(executable: String, rate: Double, cancelled: @escaping () -> Bool) throws {
+    init(executable: String, rate: Double, cancelled: @escaping () -> Bool,
+         classifier: AudioContentClassifying? = nil) throws {
         self.rate = rate
-        self.clicks = SparseClickAnalyzer(sampleRate: rate)
         self.cancelled = cancelled
+        self.classifier = try classifier ?? SoundContentAnalyzer(rate: rate)
         process.executableURL = URL(fileURLWithPath: executable)
         // PyTorch's thread limit does not control NumPy/SciPy's OpenBLAS pool.
         // Set these before the child loads any native numerical libraries.
@@ -34,7 +38,11 @@ final class SongAnalyzer {
         process.standardInput = input
         process.standardOutput = output
         process.standardError = FileHandle.standardError
-        try process.run()
+        do { try process.run() }
+        catch {
+            self.classifier.stop()
+            throw InputError.message("Music analysis could not start. Reopen Tempo Time LIVE; if this continues, reinstall the app.")
+        }
         let fd = input.fileHandleForWriting.fileDescriptor
         _ = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL) | O_NONBLOCK)
         _ = fcntl(fd, F_SETNOSIGPIPE, 1)
@@ -47,11 +55,12 @@ final class SongAnalyzer {
     /// Reset stream state while retaining the loaded runtime and model weights.
     func reset(rate: Double, cancelled: @escaping () -> Bool) throws {
         self.cancelled = cancelled
+        try classifier.reset(rate: rate)
         try acceptHandshake(request(["rate": rate]))
         self.rate = rate
         frames = 0
+        expectedTime = nil; permission = []; musicValidFrom = 0
         tracker.reset()
-        clicks = SparseClickAnalyzer(sampleRate: rate)
     }
 
     private func acceptHandshake(_ response: [String: Any]) throws {
@@ -71,6 +80,7 @@ final class SongAnalyzer {
     }
 
     func stop() {
+        classifier.stop()
         try? input.fileHandleForWriting.close()
         if process.isRunning { kill(process.processIdentifier, SIGKILL) }
         process.waitUntilExit()
@@ -118,6 +128,17 @@ final class SongAnalyzer {
     }
 
     func process(_ samples: [Float], startingAt time: Double) throws -> AnalysisSnapshot {
+        if let expectedTime, abs(time - expectedTime) > 2 / rate {
+            try reset(rate: rate, cancelled: cancelled)
+        }
+        expectedTime = time + Double(samples.count) / rate
+        let nextPermission = try classifier.process(samples)
+        if !nextPermission.contains(.music) || !permission.contains(.music) {
+            tracker.reset(); lastReviewID = nil; wasReviewing = false
+            // Discard beat evidence from speech or a previously allowed passage.
+            musicValidFrom = frames == 0 ? -.infinity : Double(frames) / rate
+        }
+        permission = nextPermission
         let encoded = samples.withUnsafeBytes { Data($0).base64EncodedString() }
         // Finish the bounded PCM reply on selection changes so the warm worker
         // protocol stays aligned. The service discards the old generation.
@@ -135,8 +156,9 @@ final class SongAnalyzer {
             wasReviewing = false
         }
         var accepted: [Double] = []
-        if !silent {
+        if !silent && permission.contains(.music) {
             for (beat, strength) in zip(beats, strengths) {
+                guard beat - frameOffsetSeconds >= musicValidFrom else { continue }
                 if tracker.addBeat(at: beat, strength: strength) { accepted.append(beat) }
             }
         }
@@ -159,7 +181,8 @@ final class SongAnalyzer {
                   let id = review["id"] as? Double, id.isFinite, id >= 0, id <= streamTime else {
                 throw InputError.message("Invalid background beat review.")
             }
-            if streamTime - beat <= period * 3 + 0.08 {
+            if permission.contains(.music), beat >= musicValidFrom, id >= musicValidFrom,
+               streamTime - beat <= period * 3 + 0.08 {
                 reviewing = true
                 let fresh = !wasReviewing || lastReviewID != id
                 reading = TempoReading(pulseMilliseconds: period * 1000, intervalCount: 4,
@@ -184,6 +207,6 @@ final class SongAnalyzer {
                                 peakDB: max(-120, 20 * log10(max(peak, 0.000001))),
                                 clipped: peak >= 1, detectedOnsets: detectedOnsets, discontinuities: 0, lastBeatTime: beatTime,
                                 songStatus: tracker.status(at: streamTime, silent: silent))
-        return clicks.process(samples, startingAt: time, music: musical)
+        return musical
     }
 }

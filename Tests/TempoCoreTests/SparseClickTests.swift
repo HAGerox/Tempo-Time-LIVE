@@ -51,6 +51,20 @@ final class SparseClickTests: XCTestCase {
         }
     }
 
+    func testClassifiedPercussionClicksWithLongTailsAcquireAtFastTempo() {
+        let rate = 48000.0
+        var analyzer = SparseClickAnalyzer(sampleRate: rate)
+        var result = empty
+        for start in stride(from: 0, to: Int(rate * 6), by: 1584) {
+            let pcm = (start..<start + 1584).map { frame -> Float in
+                let phase = (Double(frame) / rate).truncatingRemainder(dividingBy: 0.25)
+                return phase < 0.1 ? Float(0.4 * exp(-phase * 15) * sin(2 * .pi * 2000 * phase)) : 0
+            }
+            result = analyzer.process(pcm, startingAt: Double(start) / rate, music: empty)
+        }
+        XCTAssertEqual(result.reading.pulsesPerMinute ?? 0, 240, accuracy: 0.1)
+    }
+
     func testMeterUsesUnmodifiedSamplePeakAndFullScale() {
         for amplitude: Float in [0.5, 0.8, 0.999, 1, 1.2] {
             var analyzer = ClickAnalyzer(sampleRate: 48000)

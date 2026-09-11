@@ -28,6 +28,7 @@ public final class AudioInput {
     private var timer: DispatchSourceTimer?
     private var analyzer: ClickAnalyzer?
     private var song: SongAnalyzer?
+    private var clickTrack: ClickTrackAnalyzer?
     private var buffer = [Float](repeating: 0, count: Int(TT_BLOCK_FRAMES))
     private var lastData = ProcessInfo.processInfo.systemUptime
     private var testFrame = 0
@@ -71,7 +72,7 @@ public final class AudioInput {
         }
     }
 
-    public func start(device: InputDevice?, channel: Int, settings: DetectorSettings,
+    public func start(device: InputDevice?, channel: Int, settings: DetectorSettings, mode: DetectionMode = .music,
                receive: @escaping (InputUpdate) -> Void) {
         let token = invalidate()
         queue.async {
@@ -81,8 +82,12 @@ public final class AudioInput {
                 receive(.failed("Choose an available input channel."))
                 return
             }
+            if mode == .click { self.song?.stop(); self.song = nil }
             // Load the model before opening capture, so startup cannot overflow PCM.
-            if device != nil, let executable = ProcessInfo.processInfo.environment["TEMPO_BEATNET_WORKER"] {
+            if mode == .music, device != nil {
+                guard let executable = ProcessInfo.processInfo.environment["TEMPO_BEATNET_WORKER"] else {
+                    self.stopOnQueue(); receive(.failed("The music analysis runtime is missing. Reinstall Tempo Time LIVE.")); return
+                }
                 do {
                     if let song = self.song {
                         try song.reset(rate: device!.sampleRate, cancelled: { self.cancelled(token) })
@@ -92,7 +97,11 @@ public final class AudioInput {
                 }
                 catch { self.stopOnQueue(); receive(.failed(error.localizedDescription)); return }
             }
-            guard !self.cancelled(token) else { return }
+            if mode == .click, let device {
+                do { self.clickTrack = try ClickTrackAnalyzer(rate: device.sampleRate, settings: settings) }
+                catch { self.stopOnQueue(); receive(.failed(error.localizedDescription)); return }
+            }
+            guard !self.cancelled(token) else { self.stopOnQueue(); return }
             let rate: Double
             if let device = device {
                 var error: Int32 = 0
@@ -103,9 +112,9 @@ public final class AudioInput {
                 }
                 self.capture = capture
                 rate = tt_capture_sample_rate(capture)
-                if self.song != nil && abs(rate - device.sampleRate) > 1 {
+                if (self.song != nil || self.clickTrack != nil) && abs(rate - device.sampleRate) > 1 {
                     self.stopOnQueue()
-                    receive(.failed("Input sample rate changed. Reconnecting BeatNet.")); return
+                    receive(.failed("Input sample rate changed. Reconnecting.")); return
                 }
             } else { rate = 48_000 }
             self.analyzer = ClickAnalyzer(sampleRate: rate, settings: settings)
@@ -132,6 +141,7 @@ public final class AudioInput {
         timer?.cancel(); timer = nil
         if let capture = capture { tt_capture_stop(capture) }
         capture = nil; analyzer = nil
+        clickTrack?.stop(); clickTrack = nil
         if !preserveModel { song?.stop(); song = nil }
     }
 
@@ -159,7 +169,7 @@ public final class AudioInput {
             let capacity = UInt32(buffer.count)
             let count = tt_capture_read(capture, &buffer, capacity, &time)
             if count == 0 { break }
-            if song != nil {
+            if song != nil || clickTrack != nil {
                 if songSamples.isEmpty { songStart = time }
                 songSamples.append(contentsOf: buffer.prefix(Int(count)))
                 if songSamples.count >= 8192 { break }
@@ -172,9 +182,11 @@ public final class AudioInput {
             peak = max(peak, snapshot.peakDB); clipped = clipped || snapshot.clipped
             onsets += snapshot.detectedOnsets
         }
-        if !songSamples.isEmpty, let song = song {
+        if !songSamples.isEmpty {
             do {
-                let result = try song.process(songSamples, startingAt: songStart)
+                let result: AnalysisSnapshot
+                if let clickTrack { result = try clickTrack.process(songSamples, startingAt: songStart) }
+                else { result = try song!.process(songSamples, startingAt: songStart) }
                 latest = result; peak = result.peakDB; clipped = result.clipped; onsets = result.detectedOnsets
             } catch {
                 stopOnQueue(); receive(.failed(error.localizedDescription)); return

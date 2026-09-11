@@ -17,6 +17,16 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(session.reading(at: 41)?.pulseMilliseconds, 500)
     }
 
+    func testExplicitReturnToAudioClearsManualTaps() {
+        var session = TempoSession()
+        session.tap(at: 0); session.tap(at: 0.5)
+        session.returnToAudio()
+        XCTAssertFalse(session.isManual(at: 0.6))
+        XCTAssertNil(session.reading(at: 0.6))
+        session.tap(at: 1)
+        XCTAssertNil(session.reading(at: 1)?.pulseMilliseconds, "The next manual session starts fresh")
+    }
+
     func testMoreTapsExtendOverrideAndRestartAfterExpiry() {
         var session = TempoSession()
         session.tap(at: 0); session.tap(at: 0.5); session.tap(at: 1)

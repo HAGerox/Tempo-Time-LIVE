@@ -8,8 +8,16 @@ On launch, it loads its bundled models before listening. Tracking starts
 automatically and refines its reading as it hears more music. Audio is not
 recorded or uploaded.
 
-You can still tap the circle or press Space for a manual tempo. After 30 seconds
-without a tap, the display returns to audio tracking automatically.
+Choose **Music** for songs or **Click track** for an isolated metronome. Music
+recognition suppresses tempo readings during speech. Click track measures the
+spacing of clear, repeated pulses and retains speech suppression; it does not
+need to recognise a particular metronome sound. The app remembers your choice.
+Each click represents a quarter note, so subdivision clicks can show a multiple
+of the song's BPM. Keep the selected click channel free of other regular sounds.
+
+Tap the circle or press Space for a manual tempo. After 30 seconds without a tap,
+the display returns to the selected source. Choosing Music or Click track returns
+to listening immediately.
 
 Requires an **Apple Silicon Mac with macOS 14 or later**. Allow microphone access
 when macOS asks. The app includes its models and runtimes; no Python, Homebrew or

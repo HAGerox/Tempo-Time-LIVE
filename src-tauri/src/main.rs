@@ -28,11 +28,15 @@ fn audio_command(
     action: String,
     uid: Option<String>,
     channel: Option<u32>,
+    mode: Option<String>,
 ) -> Result<(), String> {
-    if !["tap", "select"].contains(&action.as_str()) {
+    if !["tap", "select", "mode"].contains(&action.as_str()) {
         return Err("Unknown audio action".into());
     }
-    let data = json!({"action": action, "uid": uid, "channel": channel});
+    if action == "mode" && !matches!(mode.as_deref(), Some("music" | "click")) {
+        return Err("Choose Music or Click track".into());
+    }
+    let data = json!({"action": action, "uid": uid, "channel": channel, "mode": mode});
     let mut input = service.input.lock().map_err(|e| e.to_string())?;
     writeln!(input, "{}", data)
         .map_err(|_| "Audio service stopped. Reopen Tempo Time LIVE.".to_string())
@@ -59,7 +63,7 @@ fn main() {
             let mut child = command.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::inherit()).spawn()?;
             let input = child.stdin.take().ok_or("Missing audio input pipe")?;
             let output = child.stdout.take().ok_or("Missing audio output pipe")?;
-            let latest = Arc::new(Mutex::new(json!({"devices": [], "channel": 1, "uid": "", "status": "Connecting", "listening": false, "starting": false, "manual": false, "bpm": null, "pulse": null, "peakDB": -120, "error": null})));
+            let latest = Arc::new(Mutex::new(json!({"devices": [], "channel": 1, "uid": "", "status": "Connecting", "listening": false, "starting": false, "manual": false, "mode": "music", "bpm": null, "pulse": null, "peakDB": -120, "error": null})));
             let reader_state = latest.clone();
             std::thread::spawn(move || {
                 for line in BufReader::new(output).lines() {

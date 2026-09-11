@@ -7,6 +7,7 @@ struct Command: Decodable {
     let action: String
     var uid: String?
     var channel: Int?
+    var mode: DetectionMode?
 }
 
 final class Service {
@@ -18,6 +19,7 @@ final class Service {
     var devices: [InputDevice] = []
     var uid: String
     var channel: Int
+    var mode: DetectionMode
     var listening = false
     var starting = false
     var peakDB = -120.0
@@ -39,6 +41,7 @@ final class Service {
         demo = CommandLine.arguments.contains("--demo")
         uid = demo ? "" : defaults.string(forKey: "deviceUID") ?? ""
         channel = demo ? 1 : max(1, defaults.integer(forKey: "channel"))
+        mode = demo ? .music : defaults.string(forKey: "detectionMode").flatMap(DetectionMode.init(rawValue:)) ?? .music
     }
 
     func run() {
@@ -66,6 +69,13 @@ final class Service {
     func handle(_ command: Command) {
         switch command.action {
         case "tap": session.tap(at: now)
+        case "mode":
+            guard let mode = command.mode else { return }
+            session.returnToAudio()
+            stop()
+            self.mode = mode
+            if !demo { defaults.set(mode.rawValue, forKey: "detectionMode") }
+            ensureListening()
         case "select":
             stop(preserveModel: true)
             if let uid = command.uid, uid != self.uid { self.uid = uid; channel = 1 }
@@ -135,14 +145,14 @@ final class Service {
     }
 
     func open(_ token: Int) {
-        input.start(device: demo ? nil : device, channel: demo ? 1 : channel, settings: DetectorSettings()) { update in
+        input.start(device: demo ? nil : device, channel: demo ? 1 : channel, settings: DetectorSettings(), mode: mode) { update in
             self.queue.async {
                 guard self.generation == token else { return }
                 switch update {
                 case .started: self.starting = false; self.listening = true
                 case .measurement(let snapshot, let peak, let clipped, let onsets):
                     if clipped { self.clippedTime = self.now }
-                    if onsets > 0 && ProcessInfo.processInfo.environment["TEMPO_BEATNET_WORKER"] != nil && !self.demo {
+                    if onsets > 0 && !self.demo {
                         self.beatSequence += onsets
                         self.lastBeatTime = snapshot.lastBeatTime ?? self.now
                     }
@@ -180,7 +190,7 @@ final class Service {
         var value: [String: Any] = [
             "devices": devices.map { ["uid": $0.uid, "name": $0.name, "channels": $0.channels] },
             "uid": uid, "channel": channel, "listening": listening, "starting": starting,
-            "manual": manual, "status": status,
+            "manual": manual, "mode": mode.rawValue, "status": status,
             "beatSequence": beatSequence,
             "beatTime": lastBeatTime > 0 ? (Date().timeIntervalSince1970 - (time - lastBeatTime)) * 1000 as Any : NSNull(),
             "beatActive": !manual && listening && time - lastBeatTime < 0.2,

@@ -11,6 +11,14 @@ rows are preserved. There is no model selector or manual tempo-hint requirement.
   and serial analysis worker. Exactly one selected channel is analysed.
 - `Sources/TempoCore`: native detector, musical tracker, note math and manual
   override, which expires after 30 seconds while audio analysis continues.
+- `Sources/TempoInput/SoundContentAnalyzer.swift`: macOS's built-in SoundAnalysis
+  classifier, fed the same selected-channel PCM on the analysis worker. It uses
+  1.5-second windows with approximately half-second updates for music/speech.
+  `AudioContentGate` owns confirmation/expiry policy. Music mode requires music
+  recognition. Click track mode uses only the speech veto, with source type
+  supplied by the user; it does not perform learned metronome classification.
+- `Sources/TempoInput/ClickTrackAnalyzer.swift`: native level-envelope onset
+  detection and consistent pulse timing, independent of Python/music workers.
 - `audio_runtime/foreground.py`: causal BeatNet+ non-percussive CRNN and BeatNet
   particle filter. Stateful soxr resampling, bounded history and silence resets.
 - `audio_runtime/review.py`: full Beat This! `final0`, analysing completed trailing
@@ -28,11 +36,37 @@ anchors are already corrected audio times. Foreground timestamps have their
 Core Audio host time and stops after three periods plus 80 ms without evidence.
 Eight seconds is analysis history, not a fixed playback delay.
 
-Silence and device/sample-rate changes invalidate background generations. Warm
-model resets do not reload weights. Long work and subprocess I/O remain off the
-UI thread and Core Audio callback. Native sparse-click fallback remains tested;
-valid music readings take priority. This is Core Audio integration, not a Dante
-network-protocol implementation or a claim of Dante hardware validation.
+`DetectionMode` (`music` / `click`) crosses React, Tauri IPC and the Swift service.
+The service persists it, defaults to Music, ends manual override on selection and
+invalidates the previous capture generation before starting the new path. Changing
+mode clears tempo and phase. Selecting a source during Manual returns to listening;
+normal tapping still expires after 30 seconds. The UI uses the existing area under
+the circle for the switch and changes TAP to MANUAL inside the circle.
+
+Music mode requires two windows with music evidence of at least 0.5; continuation
+uses 0.35 to tolerate vocals and quiet passages. Speech without music closes the
+gate promptly. Suppression resets native music locks and rejects historical review
+IDs/anchors. There is no click fallback in Music mode.
+
+Click track mode uses the existing DC-blocked peak envelope, a -30 dBFS onset
+threshold, a half-level reset threshold with 4 ms quiet time and an 80 ms retrigger
+guard. The interval tracker requires four consistent intervals before publication;
+sparse-activity and recent-onset checks suppress sustained signals and stale locks.
+A system speech veto closes the click path whenever speech evidence reaches 0.2;
+two low-speech windows reopen it. This veto is not positive metronome recognition.
+The selected source is assumed to be an isolated click track. Regular nonmusical
+pulses can still be counted when the wrong mode/source is selected. Each detected
+click is treated as a quarter note; subdivisions can report a multiple of the DAW
+BPM. No DAW-specific samples, custom classifier, model download or music worker
+are required for Click track mode.
+
+Missing or stale system classification expires after 1.5 seconds; input changes
+reset it. The selected-channel meter and manual tapping remain available during
+speech. Mode changes stop the old analyzer before starting the new one. Music
+workers remain warm across music input/channel changes, but are released on mode
+changes. Long work stays off the UI thread and Core Audio callback.
+This is Core Audio integration, not Dante network-protocol implementation or
+Dante hardware validation.
 
 Installers bundle two isolated Python runtimes because the tested models use
 isolated dependency environments for their upstream compatibility requirements. PyInstaller freezes both runtimes and their weights;

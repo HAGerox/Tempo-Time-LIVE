@@ -44,6 +44,19 @@ try:
     assert changing['pulse'] is None and changing['peakDB'] == -120
     restarted = until(lambda s: s['listening'] and s['pulse'] is not None)
     assert abs(restarted['pulse'] - 500) < .1
+    send('tap')
+    until(lambda s: s['manual'])
+    send('mode', mode='click')
+    switched = until(lambda s: s['mode'] == 'click' and not s['manual'])
+    assert switched['pulse'] is None
+    until(lambda s: s['listening'] and s['pulse'] is not None)
+    send('tap')
+    until(lambda s: s['manual'])
+    send('mode', mode='click')
+    until(lambda s: s['mode'] == 'click' and not s['manual'])
+    send('mode', mode='music')
+    until(lambda s: s['mode'] == 'music' and s['listening'])
+    print('Mode selection and reselecting the current mode both end Manual.', flush=True)
     print('Automatic capture on launch, live meter, 30-second return, and automatic capture after channel selection passed.', flush=True)
 finally:
     process.stdin.close()

@@ -5,12 +5,13 @@ import './styles.css';
 import { BeatPulseClock } from './beatPulseClock';
 
 interface Device { uid: string; name: string; channels: number }
+type DetectionMode = 'music' | 'click';
 interface Snapshot {
   devices: Device[]; uid: string; channel: number; listening: boolean; starting: boolean;
-  manual: boolean; status: string; bpm: number | null; pulse: number | null; error: string | null;
+  manual: boolean; mode: DetectionMode; status: string; bpm: number | null; pulse: number | null; error: string | null;
   peakDB: number; clipped?: boolean; beatSequence?: number; beatActive?: boolean; beatTime?: number | null;
 }
-const initial: Snapshot = { devices: [], uid: '', channel: 1, listening: false, starting: false, manual: false, status: 'Connecting', bpm: null, pulse: null, error: null, peakDB: -120 };
+const initial: Snapshot = { devices: [], uid: '', channel: 1, listening: false, starting: false, manual: false, mode: 'music', status: 'Connecting', bpm: null, pulse: null, error: null, peakDB: -120 };
 const notes = [ [1, 'Whole'], [2, 'Half'], [4, 'Quarter'], [8, 'Eighth'], [16, 'Sixteenth'], [32, 'Thirty-second'] ] as const;
 
 function Note({ value }: { value: number }) {
@@ -57,7 +58,7 @@ function App() {
     return () => { mounted.current = false; clearTimeout(timer); clearTimeout(flashTimer.current); };
   }, []);
   useEffect(() => {
-    const source = `${state.uid}:${state.channel}`;
+    const source = `${state.uid}:${state.channel}:${state.mode}`;
     if (beatSource.current !== source) {
       beatSource.current = source;
       beatClock.current.reset();
@@ -76,7 +77,7 @@ function App() {
     beatClock.current.update(state.pulse, now, fresh ? beatAt : null,
       beatAt == null ? now : beatAt + state.pulse * 3 + 80);
   }, [state.beatSequence, state.beatTime, state.beatActive, state.manual, state.listening, state.starting,
-      state.error, state.pulse, state.uid, state.channel, error]);
+      state.error, state.pulse, state.uid, state.channel, state.mode, error]);
   useEffect(() => {
     let frame: number;
     const animate = (now: number) => {
@@ -122,9 +123,13 @@ function App() {
           <span className="beat-indicator" aria-hidden="true" />
           <span className="bpm">{state.bpm == null ? '—' : Math.round(state.bpm)}</span>
           <span className="bpm-label">BPM</span>
-          <span className="tap-label">TAP</span>
+          <span className="tap-label" role="status">{state.manual ? 'MANUAL' : 'TAP'}</span>
         </button>
-        <span className={`status ${state.manual ? 'manual' : ''}`} role="status"><i />{state.manual ? 'Manual' : 'Audio'}</span>
+        <div className="source-switch" role="group" aria-label="Incoming audio">
+          {([['music', 'Music'], ['click', 'Click track']] as const).map(([mode, label]) =>
+            <button key={mode} aria-pressed={state.mode === mode} onClick={() => void command('mode', { mode })}>{label}</button>
+          )}
+        </div>
       </div>
       <p className="error" role="alert">{error || state.error || ''}</p>
     </section>

@@ -18,6 +18,10 @@ public struct TempoSession {
         manualReading = taps.reading(at: time)
     }
 
+    public mutating func returnToAudio() {
+        taps.reset(); lastTap = nil; manualReading = nil
+    }
+
     public func isManual(at time: Double) -> Bool {
         guard let lastTap else { return false }
         return time - lastTap < Self.manualTimeout

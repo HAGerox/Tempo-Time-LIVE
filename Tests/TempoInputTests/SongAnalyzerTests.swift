@@ -3,6 +3,52 @@ import TempoCore
 @testable import TempoInput
 
 final class SongAnalyzerTests: XCTestCase {
+    func testContentGateClearsMusicAndRejectsOldReviewOnReturn() throws {
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let reply = "{\"beats\":[0,0.3,0.6,0.9,1.2],\"strengths\":[0.9,0.9,0.9,0.9,0.9],\"silent\":false,\"reset\":false,\"review\":{\"period\":0.6,\"beat\":1.1,\"quality\":0.8,\"id\":1}}"
+        let contents = "#!/bin/sh\nread line\necho '{\"ready\":true,\"frameOffsetSeconds\":0.04,\"backgroundReview\":true}'\nwhile read line; do echo '\(reply)'; done\n"
+        try contents.write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+        defer { try? FileManager.default.removeItem(at: script) }
+        let classifier = StubContentClassifier()
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false }, classifier: classifier)
+        defer { analyzer.stop() }
+        let music = try analyzer.process([Float](repeating: 0.1, count: 60000), startingAt: 100)
+        XCTAssertNotNil(music.reading.pulseMilliseconds)
+        classifier.permission = []
+        let speech = try analyzer.process([Float](repeating: 0.1, count: 1584), startingAt: 101.25)
+        XCTAssertNil(speech.reading.pulseMilliseconds)
+        XCTAssertNil(speech.lastBeatTime)
+        XCTAssertEqual(speech.detectedOnsets, 0)
+        XCTAssertEqual(speech.peakDB, -20, accuracy: 0.001, "The input meter remains live")
+        classifier.permission = [.music]
+        let returning = try analyzer.process([Float](repeating: 0.1, count: 1584), startingAt: 101.283)
+        XCTAssertNil(returning.reading.pulseMilliseconds, "A previous music review cannot reappear after speech")
+        XCTAssertNil(returning.lastBeatTime)
+    }
+
+    func testMusicModeNeverFallsBackToClicks() throws {
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let contents = "#!/bin/sh\nread line\necho '{\"ready\":true}'\nwhile read line; do echo '{\"beats\":[],\"strengths\":[],\"silent\":false,\"reset\":false}'; done\n"
+        try contents.write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
+        defer { try? FileManager.default.removeItem(at: script) }
+        let classifier = StubContentClassifier()
+        classifier.permission = [.speechClear]
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false }, classifier: classifier)
+        defer { analyzer.stop() }
+        var last: AnalysisSnapshot?
+        for offset in stride(from: 0, to: 48000 * 4, by: 24000) {
+            last = try analyzer.process(TestSignal.samples(startFrame: offset, count: 24000), startingAt: Double(offset) / 48000)
+        }
+        XCTAssertNil(last?.reading.pulsesPerMinute, "Non-speech clicks must not enable a fallback in Music mode")
+        classifier.permission = []
+        let speech = try analyzer.process(TestSignal.samples(startFrame: 192000, count: 24000), startingAt: 4)
+        XCTAssertNil(speech.reading.pulseMilliseconds)
+        XCTAssertNil(speech.lastBeatTime)
+        XCTAssertEqual(speech.detectedOnsets, 0)
+    }
+
     func testBackgroundReviewUsesAudioTimeAndReturnsToWarmForeground() throws {
         let script = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let contents = """
@@ -22,7 +68,7 @@ final class SongAnalyzerTests: XCTestCase {
         try contents.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         defer { try? FileManager.default.removeItem(at: script) }
-        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false })
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false }, classifier: StubContentClassifier())
         defer { analyzer.stop() }
         let reviewed = try analyzer.process([Float](repeating: 0.1, count: 60000), startingAt: 100)
         XCTAssertEqual(try XCTUnwrap(reviewed.reading.pulseMilliseconds), 600, accuracy: 0.001)
@@ -50,7 +96,7 @@ final class SongAnalyzerTests: XCTestCase {
         try contents.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         defer { try? FileManager.default.removeItem(at: script) }
-        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false })
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false }, classifier: StubContentClassifier())
         defer { analyzer.stop() }
         XCTAssertThrowsError(try analyzer.process([Float](repeating: 0.1, count: 4800), startingAt: 100))
     }
@@ -118,7 +164,7 @@ final class SongAnalyzerTests: XCTestCase {
         try contents.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         defer { try? FileManager.default.removeItem(at: script) }
-        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false })
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false }, classifier: StubContentClassifier())
         defer { analyzer.stop() }
         let locked = try analyzer.process([Float](repeating: 0.1, count: 60000), startingAt: 100)
         XCTAssertEqual(try XCTUnwrap(locked.lastBeatTime), 101.2 - 0.04, accuracy: 0.000001)
@@ -150,7 +196,7 @@ final class SongAnalyzerTests: XCTestCase {
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         defer { try? FileManager.default.removeItem(at: script) }
         var cancelled = false
-        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { cancelled })
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { cancelled }, classifier: StubContentClassifier())
         defer { analyzer.stop() }
         // An in-flight PCM exchange finishes even when selection invalidates its token.
         cancelled = true
@@ -179,16 +225,16 @@ final class SongAnalyzerTests: XCTestCase {
         try contents.write(to: script, atomically: true, encoding: .utf8)
         try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: script.path)
         defer { try? FileManager.default.removeItem(at: script) }
-        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false })
+        let analyzer = try SongAnalyzer(executable: script.path, rate: 48000, cancelled: { false }, classifier: StubContentClassifier())
         analyzer.stop()
     }
 
     func testExitedWorkerFailsInsteadOfFallingBack() {
-        XCTAssertThrowsError(try SongAnalyzer(executable: "/usr/bin/false", rate: 48000, cancelled: { false }))
+        XCTAssertThrowsError(try SongAnalyzer(executable: "/usr/bin/false", rate: 48000, cancelled: { false }, classifier: StubContentClassifier()))
     }
 
     func testInvalidHandshakeIsRejected() {
-        XCTAssertThrowsError(try SongAnalyzer(executable: "/bin/cat", rate: 48000, cancelled: { false }))
+        XCTAssertThrowsError(try SongAnalyzer(executable: "/bin/cat", rate: 48000, cancelled: { false }, classifier: StubContentClassifier()))
     }
 
     func testCancellationInterruptsUnresponsiveModelStartup() throws {
@@ -198,7 +244,15 @@ final class SongAnalyzerTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: script) }
         let start = ProcessInfo.processInfo.systemUptime
         XCTAssertThrowsError(try SongAnalyzer(executable: script.path, rate: 48000,
-            cancelled: { ProcessInfo.processInfo.systemUptime - start > 0.2 }))
+            cancelled: { ProcessInfo.processInfo.systemUptime - start > 0.2 }, classifier: StubContentClassifier()))
         XCTAssertLessThan(ProcessInfo.processInfo.systemUptime - start, 2)
     }
+}
+
+// Protocol tests supply known content; real audio integration uses SoundAnalysis.
+private final class StubContentClassifier: AudioContentClassifying {
+    var permission: AudioContentPermission = [.music, .speechClear]
+    func process(_ samples: [Float]) throws -> AudioContentPermission { permission }
+    func reset(rate: Double) throws {}
+    func stop() {}
 }
