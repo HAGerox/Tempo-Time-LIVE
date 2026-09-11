@@ -18,7 +18,7 @@ Before publishing an installer, verify:
   tempo and visible pulses after the eight-second history has filled.
 - An isolated audio click through the selected device and channel, including
   high channel numbers. At 120 quarter-note BPM, expect 500 ms per quarter
-  note and 62.50 ms per thirty-second note.
+  note and 63 ms per thirty-second note (rounded from 62.5 ms).
 - Tap override and automatic return after 30 seconds, automatic capture on launch/channel changes and quit.
 - Input disconnect, sample-rate changes, sleep/wake and recovery.
 - Window sizing, both appearances, keyboard access and VoiceOver.

@@ -82,7 +82,7 @@ function App() {
     const animate = (now: number) => {
       if (beatClock.current.tick(now)) {
         clearTimeout(songTimer.current); setSongFlash(true);
-        songTimer.current = setTimeout(() => setSongFlash(false), 140);
+        songTimer.current = setTimeout(() => setSongFlash(false), 60);
       }
       frame = requestAnimationFrame(animate);
     };
@@ -119,6 +119,7 @@ function App() {
       </div>
       <div className="dial-area">
         <button className={`dial ${flash ? 'tapped' : ''} ${songFlash ? 'song-beat' : ''}`} aria-label="Tap tempo" onPointerDown={event => { if (event.button === 0) { event.preventDefault(); event.currentTarget.focus(); tap(); } }} onClick={event => { if (event.detail === 0) tap(); }}>
+          <span className="beat-indicator" aria-hidden="true" />
           <span className="bpm">{state.bpm == null ? '—' : Math.round(state.bpm)}</span>
           <span className="bpm-label">BPM</span>
           <span className="tap-label">TAP</span>
@@ -131,7 +132,7 @@ function App() {
       <div className="notes-heading"><span>NOTE LENGTHS</span><span>MILLISECONDS</span></div>
       <dl>{notes.map(([denominator, name]) => <div className="note-row" key={denominator}>
         <dt><Note value={denominator} /><span>{name}</span></dt>
-        <dd>{state.pulse == null ? '—' : (state.pulse * 4 / denominator).toFixed(2)}<span className="unit"> ms</span></dd>
+        <dd>{state.pulse == null ? '—' : Math.round(state.pulse * 4 / denominator)}<span className="unit"> ms</span></dd>
       </div>)}</dl>
     </section>
   </main>;
