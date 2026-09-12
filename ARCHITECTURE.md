@@ -87,7 +87,9 @@ Dante hardware validation.
 Installers bundle two isolated Python runtimes because the tested models use
 isolated dependency environments for their upstream compatibility requirements. PyInstaller freezes both runtimes and their weights;
 paths resolve within the app, independently of developer PATH or a working
-checkout. Build-time model downloads have pinned SHA256 hashes. The app does
+checkout. Packaging shares only byte-identical runtime files using relative symlinks
+inside the app, then restores the app signature. The isolated Python environments
+and library entry paths remain intact; staging must preserve symlinks. Build-time model downloads have pinned SHA256 hashes. The app does
 not download models at first launch. Native and model notices travel in the bundle.
 
 The Tauri app is ad-hoc signed and packaged with the shared unsigned-DMG packager.

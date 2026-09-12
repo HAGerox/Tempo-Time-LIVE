@@ -2,7 +2,9 @@
 
 `bash scripts/build-macos.sh` tests the native engine/service and pulse clock,
 prepares pinned runtimes, verifies both model downloads, freezes the workers,
-builds the Tauri app and creates the unsigned installer.
+builds the Tauri app, shares byte-identical runtime files with relative symlinks,
+restores the app signature and creates the unsigned installer. App staging must
+preserve those symlinks; otherwise the installed size expands again.
 
 Outputs: `dist/dmg-stage/Tempo Time LIVE.app` and
 `dist/tempo-time-live-macOS.dmg`. The app is ad-hoc signed, not notarized. The DMG
