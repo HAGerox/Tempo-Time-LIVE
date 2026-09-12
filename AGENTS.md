@@ -20,4 +20,4 @@ Keep the audio callback allocation-free and analysis on its serial worker. Prese
 - Keep checks focused on changed behaviour. Exercise the packaged app before release; check dependencies without relying on developer PATH.
 - Update these instructions only for durable decisions an agent cannot infer from code. Keep README aimed at users with a short developer section.
 
-Project skills in `.agents/skills`: `utility-screenshots` for app images, `utility-website` for a product page, `utility-release` for packaging and publishing. Read only the skill relevant to the task. CLAUDE.md imports this file; keep one source of rules.
+Project skills in `.agents/skills`: `utility-website` for a product page, `utility-release` for packaging and publishing. For app images, use the shared website skill at `../Stem-Separator-Website/.agents/skills/utility-screenshots/SKILL.md`. Read only the skill relevant to the task. CLAUDE.md imports this file; keep one source of rules.

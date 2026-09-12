@@ -10,5 +10,5 @@ keyboard taps while audio capture continues. No tempo values or UI were
 fabricated. Original PNGs and lossless WebPs are retained without upscaling.
 The recording and local capture copy are excluded from the repository.
 
-Follow `.agents/skills/utility-screenshots/SKILL.md` for the native capture
-procedure. Do not replace these with 720 × 470 computer-use screenshots.
+Follow the [website screenshot skill](../../../Stem-Separator-Website/.agents/skills/utility-screenshots/SKILL.md)
+for the native capture procedure. Do not replace these with 720 × 470 computer-use screenshots.
