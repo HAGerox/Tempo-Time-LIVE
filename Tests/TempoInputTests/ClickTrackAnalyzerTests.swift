@@ -22,6 +22,33 @@ final class ClickTrackAnalyzerTests: XCTestCase {
         XCTAssertNil(returning.reading.pulseMilliseconds, "A prior lock cannot return after the veto closes")
     }
 
+    func testSustainedClickChangesConfirmWithinTenSeconds() throws {
+        for target in [90.0, 60.0, 240.0] {
+            let analyzer = try ClickTrackAnalyzer(rate: 48000, classifier: ClickContext())
+            defer { analyzer.stop() }
+            var changedAt: Double?
+            var previous: Double?
+            for start in stride(from: 0, to: 48000 * 20, by: 2400) {
+                let time = Double(start) / 48000
+                let changed = time >= 8
+                let samples = TestSignal.samples(startFrame: changed ? start - 384000 : start,
+                    count: 2400, pulsesPerMinute: changed ? target : 120)
+                let result = try analyzer.process(samples, startingAt: time)
+                if let bpm = result.reading.pulsesPerMinute {
+                    XCTAssertTrue(abs(bpm - 120) < 0.1 || abs(bpm - target) < 0.1,
+                                  "A transition must not invent intermediate tempos")
+                    if changed && abs(bpm - target) < 0.1 && changedAt == nil { changedAt = time }
+                    previous = bpm
+                }
+            }
+            let elapsed = try XCTUnwrap(changedAt) - 8
+            print("CLICK CHANGE 120 -> \(target): \(elapsed) seconds")
+            XCTAssertGreaterThanOrEqual(elapsed, target == 90 ? 3 : 5)
+            XCTAssertLessThanOrEqual(elapsed, 10)
+            XCTAssertEqual(try XCTUnwrap(previous), target, accuracy: 0.1)
+        }
+    }
+
     func testDiscontinuityResetsContextAndNativeTempo() throws {
         let context = ClickContext()
         let analyzer = try ClickTrackAnalyzer(rate: 48000, classifier: context)

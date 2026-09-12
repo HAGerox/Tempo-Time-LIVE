@@ -8,6 +8,7 @@ final class SongAnalyzer {
     private let input = Pipe()
     private let output = Pipe()
     private var tracker = SongBeatTracker()
+    private var tempoLock = TempoLock()
     private var frameOffsetSeconds = 529.0 / 22050.0
     private var supportsReview = false
     private var lastReviewID: Double?
@@ -60,7 +61,7 @@ final class SongAnalyzer {
         self.rate = rate
         frames = 0
         expectedTime = nil; permission = []; musicValidFrom = 0
-        tracker.reset()
+        tracker.reset(); tempoLock.reset()
     }
 
     private func acceptHandshake(_ response: [String: Any]) throws {
@@ -134,7 +135,7 @@ final class SongAnalyzer {
         expectedTime = time + Double(samples.count) / rate
         let nextPermission = try classifier.process(samples)
         if !nextPermission.contains(.music) || !permission.contains(.music) {
-            tracker.reset(); lastReviewID = nil; wasReviewing = false
+            tracker.reset(); tempoLock.reset(); lastReviewID = nil; wasReviewing = false
             // Discard beat evidence from speech or a previously allowed passage.
             musicValidFrom = frames == 0 ? -.infinity : Double(frames) / rate
         }
@@ -151,7 +152,7 @@ final class SongAnalyzer {
             throw InputError.message("Invalid BeatNet beat data.")
         }
         if reset || silent {
-            tracker.reset()
+            tracker.reset(); tempoLock.reset()
             lastReviewID = nil
             wasReviewing = false
         }
@@ -171,6 +172,8 @@ final class SongAnalyzer {
         let streamTime = Double(frames) / rate
         tracker.advance(to: streamTime)
         var reading = tracker.reading(at: streamTime)
+        var evidenceTime = accepted.last.map { $0 - frameOffsetSeconds }
+        var supportedSince: Double?
         var detectedOnsets = accepted.count
         var reviewing = false
         if supportsReview, !silent, !reset, let review = response["review"] as? [String: Any] {
@@ -184,12 +187,19 @@ final class SongAnalyzer {
             if permission.contains(.music), beat >= musicValidFrom, id >= musicValidFrom,
                streamTime - beat <= period * 3 + 0.08 {
                 reviewing = true
-                let fresh = !wasReviewing || lastReviewID != id
+                let fresh = lastReviewID.map { id > $0 } ?? true
                 reading = TempoReading(pulseMilliseconds: period * 1000, intervalCount: 4,
                     jitterMilliseconds: 0, isStable: streamTime - beat <= period * 1.5,
                     isStale: false, isChanging: false, pulseCount: 5)
                 // Review anchors already use corrected audio time, not PF feature time.
                 beatTime = fresh ? streamOrigin + beat : nil
+                evidenceTime = fresh ? id : nil
+                if let start = review["start"] as? Double, start.isFinite,
+                   start >= max(musicValidFrom, id - 8), start <= beat,
+                   let support = review["support"] as? Double, support.isFinite,
+                   (0.85...1).contains(support), quality >= 0.8 {
+                    supportedSince = start
+                }
                 detectedOnsets = fresh ? 1 : 0
                 lastReviewID = id
             }
@@ -199,9 +209,17 @@ final class SongAnalyzer {
         if wasReviewing && !reviewing, reading.pulseMilliseconds != nil,
            let last = tracker.lastBeat {
             beatTime = streamOrigin + last - frameOffsetSeconds
+            evidenceTime = last - frameOffsetSeconds
             detectedOnsets = max(1, detectedOnsets)
         }
         wasReviewing = reviewing
+        if let evidence = evidenceTime, let bpm = reading.pulsesPerMinute {
+            if !tempoLock.observe(bpm: bpm, at: evidence, supportedSince: supportedSince) {
+                beatTime = nil; detectedOnsets = 0
+            }
+        }
+        reading = tempoLock.reading(at: streamTime, source: reading)
+        if reading.pulseMilliseconds == nil { beatTime = nil; detectedOnsets = 0 }
         let peak = samples.reduce(0.0) { max($0, abs(Double($1))) }
         let musical = AnalysisSnapshot(reading: reading,
                                 peakDB: max(-120, 20 * log10(max(peak, 0.000001))),

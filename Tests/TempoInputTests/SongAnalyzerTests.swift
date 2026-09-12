@@ -77,8 +77,8 @@ final class SongAnalyzerTests: XCTestCase {
         XCTAssertNil(repeated.lastBeatTime, "The same historical result must not renew phase evidence")
         XCTAssertEqual(repeated.detectedOnsets, 0)
         let foreground = try analyzer.process([Float](repeating: 0.1, count: 4800), startingAt: 101.35)
-        XCTAssertEqual(try XCTUnwrap(foreground.reading.pulseMilliseconds), 300, accuracy: 0.001)
-        XCTAssertEqual(try XCTUnwrap(foreground.lastBeatTime), 101.16, accuracy: 0.001)
+        XCTAssertEqual(try XCTUnwrap(foreground.reading.pulseMilliseconds), 600, accuracy: 0.001, "A model handover cannot instantly double the published BPM")
+        XCTAssertNil(foreground.lastBeatTime, "An unconfirmed tempo must not steer phase")
         let silent = try analyzer.process([Float](repeating: 0, count: 4800), startingAt: 101.45)
         XCTAssertNil(silent.reading.pulseMilliseconds)
     }

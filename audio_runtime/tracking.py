@@ -11,7 +11,7 @@ def fit(beats,strengths,flexible=True):
         t=t[-5:];w=w[-5:];steps=np.arange(5)
         p=float(np.polyfit(steps,t,1)[0]);res=np.abs(t-(t.mean()+(steps-2)*p))
         if not 60/215<=p<=60/55 or res.max()>max(.03,p*.08) or w.mean()<.55:return None
-        return dict(period=p,beat=float(t[-1]),quality=float(w.mean()),support=1.)
+        return dict(period=p,beat=float(t[-1]),quality=float(w.mean()),support=1.,start=float(t[0]))
     best=None
     for divisor in (1,2,3):
         for p0 in np.diff(t)/divisor:
@@ -26,5 +26,5 @@ def fit(beats,strengths,flexible=True):
             occupied=len(np.unique(k))/max(1,k.max()-k.min()+1)
             q=float(ww.mean());score=q*float(w[good].sum()/w.sum())-.15*(1-occupied)
             if q>=.45 and (best is None or score>best[0]):
-                best=(score,dict(period=float(p),beat=float(intercept),quality=q,support=float(good.mean())))
+                best=(score,dict(period=float(p),beat=float(intercept),quality=q,support=float(good.mean()),start=float(v.min())))
     return None if best is None else best[1]

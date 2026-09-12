@@ -36,6 +36,22 @@ anchors are already corrected audio times. Foreground timestamps have their
 Core Audio host time and stops after three periods plus 80 ms without evidence.
 Eight seconds is analysis history, not a fixed playback delay.
 
+`TempoCore/TempoLock` publishes one persistent audio tempo across foreground/review
+handover and also stabilizes Click track output. Manual taps still use the original
+interval tracker directly. Values within 2.5% use a trailing three-second median,
+a 0.4 BPM dead band and two-second exponential smoothing. Other candidates need
+three seconds of consistent evidence; near half/double candidates need five.
+Confirmation uses advancing audio timestamps, not PCM reply count or wall time.
+Review IDs time confirmation separately from fitted beat positions. A review with
+quality >= 0.8 and support >= 0.85 can credit its earliest fitted beat (at most five
+seconds), but still needs three fresh observations. Overlapping windows do not
+accumulate their shared duration. Foreground-only candidates need four observations.
+Pending tempo changes cannot steer phase. Missing evidence expires publication;
+conflicting evidence cannot retain an unsupported tempo beyond ten seconds. Silence,
+speech suppression, mode/input changes and stream resets clear the lock. Ten seconds
+is a measured transition target, not a guarantee for ambiguous music or slow clicks.
+The model's quality is beat evidence, not a calibrated probability of correct BPM.
+
 `DetectionMode` (`music` / `click`) crosses React, Tauri IPC and the Swift service.
 The service persists it, defaults to Music, ends manual override on selection and
 invalidates the previous capture generation before starting the new path. Changing

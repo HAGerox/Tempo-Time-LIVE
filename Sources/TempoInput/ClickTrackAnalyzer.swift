@@ -5,6 +5,7 @@ import TempoCore
 /// The system classifier supplies a speech veto, never metronome recognition.
 final class ClickTrackAnalyzer {
     private var clicks: SparseClickAnalyzer
+    private var tempoLock = TempoLock()
     private let classifier: AudioContentClassifying
     private let rate: Double
     private let settings: DetectorSettings
@@ -22,6 +23,7 @@ final class ClickTrackAnalyzer {
     func process(_ samples: [Float], startingAt time: Double) throws -> AnalysisSnapshot {
         if let expectedTime, abs(time - expectedTime) > 2 / rate {
             try classifier.reset(rate: rate)
+            tempoLock.reset()
             clicks = SparseClickAnalyzer(sampleRate: rate, settings: settings)
         }
         expectedTime = time + Double(samples.count) / rate
@@ -32,9 +34,20 @@ final class ClickTrackAnalyzer {
             peakDB: max(-120, 20 * log10(max(peak, 0.000001))),
             clipped: peak >= 1, detectedOnsets: 0, discontinuities: 0)
         guard permission.contains(.speechClear) else {
+            tempoLock.reset()
             clicks = SparseClickAnalyzer(sampleRate: rate, settings: settings)
             return empty
         }
-        return clicks.process(samples, startingAt: time, music: empty)
+        let result = clicks.process(samples, startingAt: time, music: empty)
+        var beat = result.lastBeatTime
+        var onsets = result.detectedOnsets
+        if let evidence = beat, let bpm = result.reading.pulsesPerMinute {
+            if !tempoLock.observe(bpm: bpm, at: evidence) { beat = nil; onsets = 0 }
+        }
+        let reading = tempoLock.reading(at: time + Double(samples.count) / rate, source: result.reading)
+        return AnalysisSnapshot(reading: reading, peakDB: result.peakDB, clipped: result.clipped,
+                                detectedOnsets: reading.isStale ? 0 : onsets,
+                                discontinuities: result.discontinuities,
+                                lastBeatTime: reading.isStale ? nil : beat)
     }
 }
