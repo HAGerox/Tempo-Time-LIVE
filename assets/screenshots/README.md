@@ -1,11 +1,9 @@
 # App screenshots
 
-Captured from a private capture copy of the packaged Tempo Time LIVE 0.1.0 app
-on macOS 15.7.7. Native AppKit view capture includes the real NSWindow frame and
-WKWebView at 2× scale: 1440 × 940 pixels for a 720 × 470 point window. The capture
-helper is not part of the application or installer.
+Captured from the packaged Tempo Time LIVE 0.2.2 macOS app, including its real
+window frame. The native screenshot tool supplies 720 × 470 pixel captures;
+these are preserved without upscaling, with lossless WebP copies for the site.
 
 `audio` shows real music through BlackHole channel 1; `manual` shows actual
-keyboard taps while audio capture continues. No tempo values or UI were
-fabricated. Original PNGs and lossless WebPs are retained without upscaling.
-The recording and local capture harness are excluded from the repository.
+keyboard taps while audio capture continues. No tempo values or controls were
+fabricated. The local recording and playback harness are not published.
