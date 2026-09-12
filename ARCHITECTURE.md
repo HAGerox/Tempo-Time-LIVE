@@ -57,7 +57,7 @@ The service persists it, defaults to Music, ends manual override on selection an
 invalidates the previous capture generation before starting the new path. Changing
 mode clears tempo and phase. Selecting a source during Manual returns to listening;
 normal tapping still expires after 30 seconds. The UI uses the existing area under
-the circle for the switch and changes TAP to MANUAL inside the circle.
+the circle for the switch and shows MANUAL inside the otherwise caption-free circle.
 
 Music mode requires two windows with music evidence of at least 0.5; continuation
 uses 0.35 to tolerate vocals and quiet passages. Speech without music closes the

@@ -2,7 +2,7 @@
   "name": "Tempo Time LIVE",
   "slug": "tempo-time-live",
   "bundleId": "io.github.hagerox.tempotime.live",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "stack": "tauri",
   "release": "macos"
 }

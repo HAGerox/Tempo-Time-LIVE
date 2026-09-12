@@ -83,7 +83,7 @@ function App() {
     const animate = (now: number) => {
       if (beatClock.current.tick(now)) {
         clearTimeout(songTimer.current); setSongFlash(true);
-        songTimer.current = setTimeout(() => setSongFlash(false), 60);
+        songTimer.current = setTimeout(() => setSongFlash(false), 90);
       }
       frame = requestAnimationFrame(animate);
     };
@@ -123,7 +123,7 @@ function App() {
           <span className="beat-indicator" aria-hidden="true" />
           <span className="bpm">{state.bpm == null ? '—' : Math.round(state.bpm)}</span>
           <span className="bpm-label">BPM</span>
-          <span className="tap-label" role="status">{state.manual ? 'MANUAL' : 'TAP'}</span>
+          <span className="tap-label" role="status">{state.manual ? 'MANUAL' : ''}</span>
         </button>
         <div className="source-switch" role="group" aria-label="Incoming audio">
           {([['music', 'Music'], ['click', 'Click track']] as const).map(([mode, label]) =>
@@ -134,9 +134,8 @@ function App() {
       <p className="error" role="alert">{error || state.error || ''}</p>
     </section>
     <section className="notes-panel" aria-label="Note lengths">
-      <div className="notes-heading"><span>NOTE LENGTHS</span><span>MILLISECONDS</span></div>
       <dl>{notes.map(([denominator, name]) => <div className="note-row" key={denominator}>
-        <dt><Note value={denominator} /><span>{name}</span></dt>
+        <dt><Note value={denominator} /><span className="sr-only">{name}</span></dt>
         <dd>{state.pulse == null ? '—' : Math.round(state.pulse * 4 / denominator)}<span className="unit"> ms</span></dd>
       </div>)}</dl>
     </section>
