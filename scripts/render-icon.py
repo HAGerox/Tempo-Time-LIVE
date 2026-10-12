@@ -1,21 +1,14 @@
 #!/usr/bin/env python3
-"""Rasterize the existing Android vector mark (assets/AppIcon.svg) at macOS icon sizes.
-Developer-only Pillow dependency; generated PNG/ICNS assets are committed.
+"""Regenerate the app icon files from assets/AppIcon.png (1024x1024 master; AppIcon.svg is its vector source).
+Uses the repo's Tauri CLI; generated PNG/ICO/ICNS assets are committed.
 """
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
-from PIL import Image, ImageDraw
 root = Path(__file__).resolve().parents[1]
-scale = 4096 / 48
-image = Image.new('RGBA', (4096, 4096))
-draw = ImageDraw.Draw(image)
-def box(values):
-    return tuple(round(value * scale) for value in values)
-draw.rounded_rectangle(box((4, 4, 44, 44)), radius=round(9 * scale), fill='#FFFFFF')
-draw.ellipse(box((10, 10, 38, 38)), fill='#FF5E42')
-draw.rectangle(box((21.5, 16, 26.5, 32)), fill='#FFF8EE')
-image = image.resize((1024, 1024), Image.Resampling.LANCZOS)
-image.save(root / 'assets/AppIcon.png')
-image.save(root / 'assets/AppIcon.icns', format='ICNS')
-image.save(root / 'src-tauri/icons/icon.png')
-image.save(root / 'src-tauri/icons/icon.icns', format='ICNS')
-image.save(root / 'src-tauri/icons/icon.ico', format='ICO')
+with tempfile.TemporaryDirectory() as out:
+    subprocess.run(['npx', 'tauri', 'icon', str(root / 'assets/AppIcon.png'), '-o', out], cwd=root, check=True)
+    for name in ('icon.png', 'icon.ico', 'icon.icns'):
+        shutil.copy(Path(out) / name, root / 'src-tauri/icons' / name)
+    shutil.copy(Path(out) / 'icon.icns', root / 'assets/AppIcon.icns')

@@ -1,6 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 48 48">
-  <!-- Original Tempo Time Android vector mark, preserved for macOS. -->
-  <rect x="4" y="4" width="40" height="40" rx="9" fill="#FFFFFF"/>
-  <circle fill="#FF5E42" cx="24" cy="24" r="14"/>
-  <path fill="#FFF8EE" d="M21.5 16h5v16h-5z"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024"><rect x="100" y="100" width="824" height="824" rx="185" fill="#1D1E22"/><rect x="101.5" y="101.5" width="821" height="821" rx="184" fill="none" stroke="#FFFFFF" stroke-opacity="0.12" stroke-width="3"/><g transform="translate(512 512) scale(.86) translate(-512 -512)"><path d="M432 262h160l116 476a40 40 0 0 1-39 50H355a40 40 0 0 1-39-50z" stroke="#F4F5F7" stroke-width="52" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M362 660h300" stroke="#737477" stroke-width="52" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M512 660L640 330" stroke="#FF5E42" stroke-width="56" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="597" cy="440" r="48" fill="#FF5E42"/></g></svg>
