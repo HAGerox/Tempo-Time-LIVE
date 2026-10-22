@@ -48,7 +48,8 @@ for name in sorted(set(paths)):
         if pattern.search(text):
             findings.append((name, label))
 
-commits = subprocess.run(['git', 'log', '--all', '--format=%H%x00%ae%x00%ce%x00%B%x00'],
+commits = subprocess.run(['git', 'log', 'HEAD', '--branches', '--tags', '--remotes',
+                          '--format=%H%x00%ae%x00%ce%x00%B%x00'],
                          cwd=root, capture_output=True, text=True)
 if commits.returncode == 0:
     for record in commits.stdout.split('\0'):
