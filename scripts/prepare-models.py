@@ -2,7 +2,9 @@
 import hashlib
 import json
 from pathlib import Path
+import urllib.error
 import urllib.request
+import time
 
 root = Path(__file__).resolve().parents[1]
 destination = root / '.build/live-models'
@@ -12,8 +14,19 @@ for item in json.loads((root / 'audio_runtime/models.json').read_text()):
     if path.exists() and hashlib.sha256(path.read_bytes()).hexdigest() == item['sha256']:
         continue
     print('Downloading', item['name'], flush=True)
-    with urllib.request.urlopen(item['url'], timeout=120) as response:
-        data = response.read()
+    for attempt in range(4):
+        try:
+            with urllib.request.urlopen(item['url'], timeout=120) as response:
+                data = response.read()
+            break
+        except urllib.error.HTTPError as error:
+            if error.code not in {429, 500, 502, 503, 504} or attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == 3:
+                raise
+            time.sleep(2 ** attempt)
     if hashlib.sha256(data).hexdigest() != item['sha256']:
         raise RuntimeError('Model checksum mismatch: ' + item['name'])
     temporary = path.with_suffix(path.suffix + '.part')

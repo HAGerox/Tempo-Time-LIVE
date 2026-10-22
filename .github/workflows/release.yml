@@ -33,6 +33,10 @@ jobs:
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
         with:
           version: '0.13.5'
+      - name: Use patched build Python
+        run: |
+          uv venv --python 3.14.9 .build/ci-tools
+          echo "$GITHUB_WORKSPACE/.build/ci-tools/bin" >> "$GITHUB_PATH"
       - name: Require Apple Silicon runner
         run: test "$(uname -m)" = arm64
       - run: npm ci
