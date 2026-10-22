@@ -7,6 +7,9 @@
   {
     "name": "beat-this-final0.ckpt",
     "url": "https://cloud.cp.jku.at/public.php/dav/files/7ik4RrBKTS273gp/final0.ckpt",
-    "sha256": "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331"
+    "sha256": "8c328b45f59d8dd3dff219253ff6a8d6482be57d0133a29140e2febbf8eb8331",
+    "mirrors": [
+      "https://huggingface.co/oulianov/beat_this/resolve/fea475438eb3b8e509c7661a44f1ca97ffbe9829/final0.ckpt"
+    ]
   }
 ]
