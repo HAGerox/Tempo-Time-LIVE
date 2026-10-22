@@ -5,6 +5,7 @@ import plistlib
 import subprocess
 import sys
 app = Path(sys.argv[1]).resolve()
+subprocess.run([sys.executable, str(Path(__file__).with_name('check-python-security.py')), str(app)], check=True)
 info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
 assert info['NSMicrophoneUsageDescription']
 assert info['CFBundleIdentifier'] == 'io.github.hagerox.tempotime.live'

@@ -8,7 +8,7 @@ done
 PYTHONPATH="$PWD/audio_runtime/compat" .build/live-foreground-venv/bin/pyinstaller \
   --noconfirm --clean --onedir --name tempo-live --distpath .build/live-runtime \
   --workpath .build/foreground-freeze --specpath .build \
-  --paths audio_runtime --paths audio_runtime/vendor --collect-submodules madmom \
+  --paths audio_runtime --paths audio_runtime/vendor --collect-submodules madmom --copy-metadata madmom \
   --add-data "$PWD/.build/live-models/beatnet-plus-af.pt:models" \
   --add-data "$PWD/.build/runtime-notices/foreground:licenses" \
   --exclude-module tkinter --exclude-module IPython --exclude-module pytest \

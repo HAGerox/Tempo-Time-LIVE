@@ -22,3 +22,9 @@ bounded background work, an eight-second evidence fit and audio-clock phase
 handoffs. These adapters use the repository's MIT licence. Third-party licences
 remain applicable to their respective components; the application's MIT licence
 does not relicense its dependencies or model weights.
+# madmom compatibility patch
+
+The bundled madmom 0.16.1 replaces its version-only use of `pkg_resources` with
+Python's `importlib.metadata.version`. This permits current setuptools without
+changing the audio algorithms. The build applies `scripts/patch-madmom.py` and
+preserves madmom's distribution metadata and BSD notice.
